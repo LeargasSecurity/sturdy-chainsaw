@@ -2,7 +2,7 @@
 
 ## Overview
 
-Welcome to the Leargas Security Scripts repository for Canadian Centre for Cyber Security Projects. This repository contains Ansible playbooks and related files to automate the setup and management of various cybersecurity projects. These scripts are designed to streamline deployment processes, enhance security configurations, and facilitate the management of cybersecurity tools and infrastructure.
+Welcome to the Leargas Security scripts repository for Canadian Centre for Cyber Security Projects. This repository contains Ansible playbooks and related files to automate the setup and management of various cybersecurity projects. These scripts are designed to streamline deployment processes, enhance security configurations, and facilitate the management of cybersecurity tools and infrastructure.
 
 You can find the repository on GitHub at: [Canadian Centre for Cyber Security](https://github.com/CybercentreCanada/).
 
