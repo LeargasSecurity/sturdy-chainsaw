@@ -1,0 +1,157 @@
+---
+# -------------------------------------------------------------------------------
+# Name: Setup AssemblyLine4
+# Creator: Patrick Kelley
+# Email: patrick.kelley@leargassecurity.com
+# Description: This Ansible playbook sets up AssemblyLine4 by performing the
+# following tasks:
+# 1. Updates the apt cache and installs required packages.
+# 2. Sets up Docker repository and installs Docker.
+# 3. Configures Docker, clones the AssemblyLine repository, and sets up directories.
+# 4. Generates necessary certificates.
+# 5. Pulls and builds Docker images.
+# 6. Starts Docker containers and ensures all services are up and running.
+# -------------------------------------------------------------------------------
+
+- name: Setup AssemblyLine4
+  hosts: assemblyline
+  become: yes
+
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install required packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - software-properties-common
+        state: present
+
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable
+        state: present
+        filename: docker
+
+    - name: Update apt cache after adding Docker repo
+      apt:
+        update_cache: yes
+
+    - name: Install Docker packages
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+        state: present
+
+    - name: Check if docker-compose file exists
+      stat:
+        path: /usr/local/bin/docker-compose
+      register: docker_compose_file
+
+    - name: Remove existing docker-compose file if present
+      file:
+        path: /usr/local/bin/docker-compose
+        state: absent
+      when: docker_compose_file.stat.exists
+
+    - name: Create symlink for docker-compose
+      file:
+        src: /usr/libexec/docker/cli-plugins/docker-compose
+        dest: /usr/local/bin/docker-compose
+        state: link
+
+    - name: Create Docker daemon.json
+      copy:
+        dest: /etc/docker/daemon.json
+        content: |
+          {
+            "default-address-pools":
+            [
+              {"base":"10.201.0.0/16","size":24}
+            ]
+          }
+
+    - name: Create git directory
+      file:
+        path: "{{ ansible_env.HOME }}/git"
+        state: directory
+
+    - name: Clone assemblyline-docker-compose repository
+      git:
+        repo: https://github.com/CybercentreCanada/assemblyline-docker-compose.git
+        dest: "{{ ansible_env.HOME }}/git/assemblyline-docker-compose"
+
+    - name: Create deployments directory
+      file:
+        path: "{{ ansible_env.HOME }}/deployments"
+        state: directory
+
+    - name: Copy minimal appliance to deployments
+      command: cp -R {{ ansible_env.HOME }}/git/assemblyline-docker-compose/minimal_appliance {{ ansible_env.HOME }}/deployments/assemblyline
+      args:
+        creates: "{{ ansible_env.HOME }}/deployments/assemblyline"
+
+    - name: Generate nginx certificate and key
+      command: openssl req -nodes -x509 -newkey rsa:4096 -keyout {{ ansible_env.HOME }}/deployments/assemblyline/config/nginx.key -out {{ ansible_env.HOME }}/deployments/assemblyline/config/nginx.crt -days 365 -subj "/C=CA/ST=Ontario/L=Ottawa/O=CCCS/CN=assemblyline.local"
+      args:
+        creates: "{{ ansible_env.HOME }}/deployments/assemblyline/config/nginx.crt"
+
+    - name: Pull Docker images
+      command: docker-compose pull
+      args:
+        chdir: "{{ ansible_env.HOME }}/deployments/assemblyline"
+      ignore_errors: yes
+
+    - name: Build Docker images
+      command: docker-compose build
+      args:
+        chdir: "{{ ansible_env.HOME }}/deployments/assemblyline"
+
+    - name: Pull bootstrap Docker images
+      command: docker-compose -f bootstrap-compose.yaml pull
+      args:
+        chdir: "{{ ansible_env.HOME }}/deployments/assemblyline"
+
+    - name: Build bootstrap Docker images
+      command: docker-compose -f bootstrap-compose.yaml build
+      args:
+        chdir: "{{ ansible_env.HOME }}/deployments/assemblyline"
+
+    - name: Start Docker containers with extra time
+      command: docker-compose up -d --remove-orphans --timeout 120
+      args:
+        chdir: "{{ ansible_env.HOME }}/deployments/assemblyline"
+
+    - name: Ensure all services are up
+      shell: |
+        docker-compose ps | grep "Exit"
+      args:
+        chdir: "{{ ansible_env.HOME }}/deployments/assemblyline"
+      register: compose_ps_output
+      failed_when: compose_ps_output.stdout != ''
+
+    - name: Restart failed services
+      command: docker-compose restart
+      args:
+        chdir: "{{ ansible_env.HOME }}/deployments/assemblyline"
+      when: compose_ps_output.stdout != ''
+
+    - name: Start bootstrap containers with extra time
+      command: docker-compose -f bootstrap-compose.yaml up --remove-orphans --timeout 120
+      args:
+        chdir: "{{ ansible_env.HOME }}/deployments/assemblyline"
