@@ -1,6 +1,3 @@
-# sturdy-chainsaw
-CCCS-Ansible-Playbooks
-
 # Canadian Centre for Cyber Security Project Scripts
 
 ## Overview
