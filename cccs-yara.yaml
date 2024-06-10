@@ -15,7 +15,7 @@
 # -----------------------------------------------------------------------------
 
 - name: Install and configure CCCS-Yara
-  hosts: assemblyline
+  hosts: all
   become: yes
   tasks:
     - name: Ensure necessary packages are installed
