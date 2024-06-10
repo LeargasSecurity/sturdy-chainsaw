@@ -1,0 +1,49 @@
+---
+# -----------------------------------------------------------------------------
+# This Ansible playbook installs and configures CCCS-Yara on the target host.
+# It performs the following tasks:
+# 1. Ensures necessary packages are installed (git, python3-pip).
+# 2. Clones the CCCS-Yara repository from GitHub to /opt/CCCS-Yara.
+# 3. Installs Python requirements from the requirements.txt file in the repository.
+# 4. Runs the setup.py script to install CCCS-Yara.
+# 5. Runs the YARA validator help command to verify the installation.
+#
+# Usage:
+# ansible-playbook install_cccs_yara.yml
+#
+# Target host: assemblyline
+# -----------------------------------------------------------------------------
+
+- name: Install and configure CCCS-Yara
+  hosts: assemblyline
+  become: yes
+  tasks:
+    - name: Ensure necessary packages are installed
+      apt:
+        name: 
+          - git
+          - python3-pip
+        state: present
+        update_cache: yes
+
+    - name: Clone CCCS-Yara repository
+      git:
+        repo: https://github.com/CybercentreCanada/CCCS-Yara.git
+        dest: /opt/CCCS-Yara
+
+    - name: Install Python requirements
+      pip:
+        requirements: /opt/CCCS-Yara/requirements.txt
+
+    - name: Install CCCS-Yara
+      command: python3 setup.py install
+      args:
+        chdir: /opt/CCCS-Yara
+
+    - name: Run YARA validator help command
+      command: yara_validator -h
+      register: output
+
+    - name: Display YARA validator help output
+      debug:
+        var: output.stdout
