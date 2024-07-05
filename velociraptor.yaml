@@ -14,17 +14,17 @@
         dest: /usr/local/bin/velociraptor
         mode: '0755'
 
-    - name: Generate Velociraptor config
-      command: velociraptor config generate -i
-      args:
-        creates: /etc/velociraptor.config.yaml
-      register: config_output
-      environment:
-        # Environment variables for the interactive configuration can be preset as needed
-        VELOCIRAPTOR_BIND_ADDRESS: "0.0.0.0"
-        VELOCIRAPTOR_PORT: "8000"
-        VELOCIRAPTOR_ADMIN_PASSWORD: "yourpassword"
-        VELOCIRAPTOR_CLIENT_PORT: "8001"
+    - name: Create Velociraptor configuration directory
+      file:
+        path: /etc/velociraptor
+        state: directory
+        mode: '0755'
+
+    - name: Copy Velociraptor configuration file
+      copy:
+        src: velociraptor.config.yaml
+        dest: /etc/velociraptor/velociraptor.config.yaml
+        mode: '0644'
 
     - name: Write Velociraptor systemd service file
       copy:
@@ -35,7 +35,7 @@
           After=network.target
 
           [Service]
-          ExecStart=/usr/local/bin/velociraptor --config /etc/velociraptor.config.yaml frontend
+          ExecStart=/usr/local/bin/velociraptor --config /etc/velociraptor/velociraptor.config.yaml frontend
           Restart=always
           User=root
 

@@ -1,0 +1,46 @@
+---
+API:
+  Bind_address: "0.0.0.0"
+  Port: 8000
+  Read_timeout: 10m
+  Write_timeout: 10m
+  Request_timeout: 2m
+  Frontend_path: "/usr/local/bin/velociraptor"
+  Debug: true
+  Frontend:
+    Admin: 
+      Username: "admin"
+      Password: "yourpassword"
+
+Datastore:
+  Driver: sqlite
+  Connection_string: "file:/var/lib/velociraptor/velociraptor.db"
+
+Frontend:
+  Port: 8000
+  Bind_address: "0.0.0.0"
+  UI_path: "/usr/local/bin/velociraptor"
+
+Monitoring:
+  Disable_metrics: false
+
+GUI:
+  Theme: "default"
+  Public_URL: "http://0.0.0.0:8000/"
+
+Client:
+  Sandbox: "/var/lib/velociraptor/sandbox"
+  Logs: "/var/log/velociraptor/"
+  Filesystem:
+    Root: "/"
+  Flows:
+    Temp_storage: "/var/tmp/"
+  Uploads:
+    Temp_storage: "/var/tmp/"
+
+Logging:
+  File: "/var/log/velociraptor/server.log"
+  Level: info
+  Max_age: 30
+  Max_backups: 5
+  Max_size: 100
