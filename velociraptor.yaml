@@ -1,0 +1,64 @@
+---
+- name: Install and configure Velociraptor
+  hosts: all
+  become: yes
+  tasks:
+    - name: Ensure system is up-to-date
+      apt:
+        update_cache: yes
+        upgrade: dist
+
+    - name: Download Velociraptor
+      get_url:
+        url: https://github.com/Velocidex/velociraptor/releases/download/v0.72/velociraptor-v0.72.3-linux-amd64
+        dest: /usr/local/bin/velociraptor
+        mode: '0755'
+
+    - name: Generate Velociraptor config
+      command: velociraptor config generate -i
+      args:
+        creates: /etc/velociraptor.config.yaml
+      register: config_output
+      environment:
+        # Environment variables for the interactive configuration can be preset as needed
+        VELOCIRAPTOR_BIND_ADDRESS: "0.0.0.0"
+        VELOCIRAPTOR_PORT: "8000"
+        VELOCIRAPTOR_ADMIN_PASSWORD: "yourpassword"
+        VELOCIRAPTOR_CLIENT_PORT: "8001"
+
+    - name: Write Velociraptor systemd service file
+      copy:
+        dest: /etc/systemd/system/velociraptor.service
+        content: |
+          [Unit]
+          Description=Velociraptor Server
+          After=network.target
+
+          [Service]
+          ExecStart=/usr/local/bin/velociraptor --config /etc/velociraptor.config.yaml frontend
+          Restart=always
+          User=root
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Reload systemd to apply new service
+      command: systemctl daemon-reload
+
+    - name: Enable and start Velociraptor service
+      systemd:
+        name: velociraptor
+        enabled: yes
+        state: started
+
+    - name: Allow Velociraptor ports through the firewall
+      ufw:
+        rule: allow
+        port: '8000'
+        proto: tcp
+
+    - name: Allow Velociraptor client port through the firewall
+      ufw:
+        rule: allow
+        port: '8001'
+        proto: tcp
